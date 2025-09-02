@@ -116,10 +116,10 @@ A rede neural também inclui ferramentas para visualizar o desempenho:
 
 1. Instale as dependências:
     ```bash
-    pip install numpy matplotlib tensorflow
+    conda env create -f environment.yml
     ```
 
-2. Execute o script de treino da rede neural. O exemplo atual usa o Fashion MNIST, mas pode ser adaptado para qualquer dataset de imagens 28x28 com ajuste mínimo no código.
+2. Execute o script de treino da rede neural. O exemplo atual usa o MNIST, mas pode ser adaptado para qualquer dataset de imagens 28x28 com ajuste mínimo no código.
 
 3. Observe a precisão ao longo das épocas e visualize o melhor modelo treinado.
 
