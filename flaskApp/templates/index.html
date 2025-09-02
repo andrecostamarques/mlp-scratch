@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconhecimento de Dígitos - MLP Grid 28x28</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .grid-container {
+            display: inline-block;
+            border: 3px solid #333;
+            background-color: white;
+            margin: 20px auto;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(28, 1fr);
+            grid-template-rows: repeat(28, 1fr);
+            gap: 0;
+            width: 560px;
+            height: 560px;
+        }
+        
+        .pixel {
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        
+        .pixel:hover {
+            background-color: #ddd;
+        }
+        
+        .pixel.active {
+            background-color: #000;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .clear-btn {
+            background-color: #dc3545;
+        }
+        
+        .clear-btn:hover {
+            background-color: #c82333;
+        }
+        
+        .brush-controls {
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .brush-size input {
+            width: 60px;
+        }
+        
+        .draw-mode {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .prediction {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 10px 0;
+        }
+        
+        .confidence {
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .instructions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .loading {
+            display: none;
+            color: #007bff;
+            font-style: italic;
+        }
+        
+        .matrix-display {
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 10px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                width: 280px;
+                height: 280px;
+            }
+            
+            .pixel {
+                width: 10px;
+                height: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reconhecimento de Dígitos</h1>
+        <p class="subtitle">Desenhe um dígito (0-9) no grid 28x28 abaixo</p>
+        
+        <div class="instructions">
+            <strong>Como usar:</strong>
+            <ul>
+                <li>Clique nos pixels do grid para desenhar/apagar</li>
+                <li>Arraste com o mouse para desenhar continuamente</li>
+                <li>Ajuste o tamanho do "pincel" para desenhar áreas maiores</li>
+                <li>Clique em "Classificar" para ver a previsão do modelo</li>
+                <li>Use "Limpar Grid" para começar novamente</li>
+            </ul>
+        </div>
+        
+        <div class="brush-controls">
+            <div class="brush-size">
+                <label>Tamanho do Pincel:</label>
+                <input type="range" id="brushSize" min="1" max="5" value="1">
+                <span id="brushSizeValue">1</span>
+            </div>
+            <div class="draw-mode">
+                <label>
+                    <input type="checkbox" id="drawMode" checked>
+                    Modo Desenho (desmarcado = apagar)
+                </label>
+            </div>
+        </div>
+        
+        <div class="grid-container">
+            <div class="grid" id="grid"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="predictBtn">Classificar Dígito</button>
+            <button id="clearBtn" class="clear-btn">Limpar Grid</button>
+            <button id="toggleMatrixBtn">Mostrar Matriz</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            Processando...
+        </div>
+        
+        <div id="result" style="display: none;"></div>
+        
+        <div class="matrix-display" id="matrixDisplay"></div>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let grid = [];
+        let isMouseDown = false;
+        let brushSize = 1;
+        let drawMode = true; // true = desenhar, false = apagar
+        
+        // Elementos DOM
+        const gridElement = document.getElementById('grid');
+        const predictBtn = document.getElementById('predictBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const toggleMatrixBtn = document.getElementById('toggleMatrixBtn');
+        const result = document.getElementById('result');
+        const loading = document.getElementById('loading');
+        const brushSizeSlider = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+        const drawModeCheckbox = document.getElementById('drawMode');
+        const matrixDisplay = document.getElementById('matrixDisplay');
+        
+        // Inicializar grid
+        function initGrid() {
+            grid = Array(28).fill().map(() => Array(28).fill(0));
+            gridElement.innerHTML = '';
+            
+            for (let row = 0; row < 28; row++) {
+                for (let col = 0; col < 28; col++) {
+                    const pixel = document.createElement('div');
+                    pixel.className = 'pixel';
+                    pixel.dataset.row = row;
+                    pixel.dataset.col = col;
+                    
+                    // Eventos do mouse
+                    pixel.addEventListener('mousedown', handlePixelClick);
+                    pixel.addEventListener('mouseenter', handlePixelEnter);
+                    pixel.addEventListener('mouseleave', handlePixelLeave);
+                    
+                    // Eventos de toque (mobile)
+                    pixel.addEventListener('touchstart', handleTouchStart, { passive: false });
+                    pixel.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    
+                    gridElement.appendChild(pixel);
+                }
+            }
+        }
+        
+        // Atualizar controles
+        brushSizeSlider.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            brushSizeValue.textContent = brushSize;
+        });
+        
+        drawModeCheckbox.addEventListener('change', (e) => {
+            drawMode = e.target.checked;
+        });
+        
+        // Handlers de eventos
+        function handlePixelClick(e) {
+            e.preventDefault();
+            isMouseDown = true;
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+            paintPixels(row, col);
+        }
+        
+        function handlePixelEnter(e) {
+            if (isMouseDown) {
+                const row = parseInt(e.target.dataset.row);
+                const col = parseInt(e.target.dataset.col);
+                paintPixels(row, col);
+            }
+        }
+        
+        function handlePixelLeave(e) {
+            // Removido para permitir pintura contínua
+        }
+        
+        function handleTouchStart(e) {
+            e.preventDefault();
+            isMouseDown = true;
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+            paintPixels(row, col);
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (element && element.classList.contains('pixel')) {
+                const row = parseInt(element.dataset.row);
+                const col = parseInt(element.dataset.col);
+                paintPixels(row, col);
+            }
+        }
+        
+        // Eventos globais
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        
+        document.addEventListener('touchend', () => {
+            isMouseDown = false;
+        });
+        
+        // Função para pintar pixels
+        function paintPixels(centerRow, centerCol) {
+            const radius = Math.floor(brushSize / 2);
+            
+            for (let row = centerRow - radius; row <= centerRow + radius; row++) {
+                for (let col = centerCol - radius; col <= centerCol + radius; col++) {
+                    if (row >= 0 && row < 28 && col >= 0 && col < 28) {
+                        // Calcula distância do centro para criar pincel circular
+                        const distance = Math.sqrt((row - centerRow) ** 2 + (col - centerCol) ** 2);
+                        
+                        if (distance <= radius) {
+                            grid[row][col] = drawMode ? 255 : 0;
+                            updatePixelDisplay(row, col);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Atualizar display do pixel
+        function updatePixelDisplay(row, col) {
+            const pixelElement = gridElement.children[row * 28 + col];
+            if (grid[row][col] > 0) {
+                pixelElement.classList.add('active');
+            } else {
+                pixelElement.classList.remove('active');
+            }
+        }
+        
+        // Limpar grid
+        clearBtn.addEventListener('click', () => {
+            initGrid();
+            result.style.display = 'none';
+            matrixDisplay.style.display = 'none';
+        });
+        
+        // Mostrar/esconder matriz
+        toggleMatrixBtn.addEventListener('click', () => {
+            if (matrixDisplay.style.display === 'none') {
+                displayMatrix();
+                matrixDisplay.style.display = 'block';
+                toggleMatrixBtn.textContent = 'Esconder Matriz';
+            } else {
+                matrixDisplay.style.display = 'none';
+                toggleMatrixBtn.textContent = 'Mostrar Matriz';
+            }
+        });
+        
+        // Exibir matriz
+        function displayMatrix() {
+            let matrixText = '';
+            for (let row = 0; row < 28; row++) {
+                for (let col = 0; col < 28; col++) {
+                    matrixText += grid[row][col].toString().padStart(3, ' ') + ' ';
+                }
+                matrixText += '\n';
+            }
+            matrixDisplay.textContent = matrixText;
+        }
+        
+        // Classificar dígito
+        predictBtn.addEventListener('click', async () => {
+            // Mostra loading
+            loading.style.display = 'block';
+            predictBtn.disabled = true;
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ grid: grid })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.innerHTML = `
+                        <div class="prediction">Dígito Previsto: ${data.numero}</div>
+                        <div class="confidence">Certeza: ${data.certeza.toFixed(2)}%</div>
+                    `;
+                    result.className = 'result';
+                } else {
+                    result.innerHTML = `<strong>Erro:</strong> ${data.error}`;
+                    result.className = 'result error';
+                }
+                
+                result.style.display = 'block';
+                
+            } catch (error) {
+                result.innerHTML = `<strong>Erro:</strong> Falha na comunicação com o servidor`;
+                result.className = 'result error';
+                result.style.display = 'block';
+            }
+            
+            // Esconde loading
+            loading.style.display = 'none';
+            predictBtn.disabled = false;
+        });
+        
+        // Prevenir context menu no grid
+        gridElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
+        // Inicializar
+        initGrid();
+    </script>
+</body>
+</html>
