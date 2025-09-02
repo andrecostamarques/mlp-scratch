@@ -8,6 +8,28 @@ Este projeto implementa uma rede neural **feita à mão**, sem o uso de bibliote
 
 O código foi desenvolvido em Python e utiliza apenas bibliotecas básicas como `numpy` e `matplotlib` para manipulação de arrays e visualização de dados. A classe principal, `NeuralNetwork`, implementa os componentes fundamentais de uma rede neural, incluindo propagação para frente (forward propagation), retropropagação (backpropagation), e atualização de pesos e vieses.
 
+## Novas Funcionalidades:
+- Facilitação de import e implementação.
+
+Ao ter um arquivo .pkl contendo o modelo [(Você encontra ele aqui!)](https://drive.google.com/file/d/1Vw0WhBdbYJqnzA9YmhG3qfz0J3sPHXe9/view?usp=sharing), para utilização pode se utilizar a versão Lib do projeto!
+
+Para a importação utilize do arquivo NMLPlib.py, após a importação, só é necessário fazer o load do modelo e fazer a inferencia com a função **preverImageCustomOnlyText**!
+
+``` python
+from NMLPlib import *
+
+#import do modelo
+modelo = loadModelo('NeuralNetwork.pkl')
+
+# Cria uma matriz 28x28 com números inteiros aleatórios entre 0 e 255
+img = Image.open("desenho.png").convert("L").resize((28, 28))
+img = np.array(img, dtype=np.uint8)
+
+#faz a inferencia e retorna o previsto e a certeza
+numero, certeza = modelo.preverImageCustomOnlyText(img)
+print(f"Previsto: {numero}, Certeza: {certeza:.2f}%")
+```
+
 ## Principais Funções
 
 ### 1. **Classe NeuralNetwork**
@@ -104,4 +126,6 @@ A rede neural também inclui ferramentas para visualizar o desempenho:
 ## Conclusão
 
 Este projeto mostra uma implementação manual de uma rede neural, sem o uso de bibliotecas de IA. Ele é flexível, podendo ser adaptado a diferentes conjuntos de dados de imagens 28x28. A abordagem permite uma maior compreensão dos conceitos fundamentais de redes neurais, como forward propagation, backpropagation e a otimização dos pesos e vieses.
+
+
 
